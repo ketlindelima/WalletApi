@@ -1,7 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace WalletApi.Models
 {
@@ -10,19 +7,46 @@ namespace WalletApi.Models
         public Guid Id {get; private set;}
         public decimal Balance {get; private set;}
         public DateTime CreatedAt {get; private set;}
-        public ICollection<Transaction> Transactions { get; private set; } = new List<Transaction>();
-
-        public void Credit(decimal amount)
+        private readonly List<Transaction> _transactions = [];
+        public IReadOnlyCollection<Transaction> Transactions => _transactions;
+        public Account()
         {
-            Balance += amount;
+            Id = Guid.NewGuid();
+            CreatedAt = DateTime.UtcNow;
         }
 
-        public void Debit(decimal amount)
+        public Transaction Credit(decimal amount)
+        {
+            Balance += amount;
+
+            var transaction = new Transaction(
+                Id,
+                TransactionType.Credit,
+                amount
+            );
+
+            _transactions.Add(transaction);
+
+            return transaction;
+        }
+
+
+        public Transaction Debit(decimal amount)
         {
             if (Balance < amount)
-                throw new InsufficientBalanceException();
-            
+                throw new InvalidOperationException("Saldo insuficiente.");
+
             Balance -= amount;
+
+            var transaction = new Transaction(
+                Id,
+                TransactionType.Debit,
+                amount
+            );
+
+            _transactions.Add(transaction);
+
+            return transaction;
         }
     }
 }
