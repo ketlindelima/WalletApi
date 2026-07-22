@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+
+  api:
+    build: .
+
+    environment:
+      ConnectionStrings__Database: Host=postgres;Port=5432;Database=WalletApi;Username=postgres;Password=dbwallet354
+
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dbwallet354
+      POSTGRES_DB: WalletApi
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+
+
+volumes:
+  postgres-data:
