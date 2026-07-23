@@ -14,6 +14,14 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+//Cria update de banco de dados
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
+}
+
+
 //Utilizando Swagger em produção para acessar pelo container
 app.UseSwagger();
 app.UseSwaggerUI();
