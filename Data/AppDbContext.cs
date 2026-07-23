@@ -14,6 +14,10 @@ namespace WalletApi.Data
 
     public DbSet<Transaction> Transactions => Set<Transaction>();
 
+    public DbSet<Transfer> Transfers => Set<Transfer>();
+
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         builder.Entity<Account>()
@@ -24,6 +28,19 @@ namespace WalletApi.Data
         builder.Entity<Account>()
             .Navigation(a => a.Transactions)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.Entity<Account>()
+            .Property(a => a.Version)
+            .IsRowVersion();
+        
+        builder.Entity<Transaction>()
+            .HasIndex(t => new { t.AccountId, t.CreatedAt });
+
+
+        builder.Entity<IdempotencyRecord>()
+            .HasIndex(x => x.Key)
+            .IsUnique();
+
 
         base.OnModelCreating(builder);
     }
