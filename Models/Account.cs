@@ -7,9 +7,11 @@ namespace WalletApi.Models
     {
         public Guid Id {get; private set;}
         public decimal Balance {get; private set;}
+        public uint Version {get; private set;}
         public DateTime CreatedAt {get; private set;}
         private readonly List<Transaction> _transactions = [];
         public IReadOnlyCollection<Transaction> Transactions => _transactions;
+
         public Account()
         {
             Id = Guid.NewGuid();
