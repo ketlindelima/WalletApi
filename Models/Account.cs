@@ -1,4 +1,5 @@
 using System;
+using WalletApi.Migrations;
 
 namespace WalletApi.Models
 {
@@ -46,6 +47,35 @@ namespace WalletApi.Models
 
             _transactions.Add(transaction);
 
+            return transaction;
+        }
+
+        public Transaction TransferIn(decimal amount)
+        {           
+            Balance += amount;
+
+            var transaction = new Transaction(
+                Id,
+                TransactionType.TransferIn,
+                amount
+            );
+            _transactions.Add(transaction);
+            return transaction;
+        }
+
+        public Transaction TransferOut(decimal amount)
+        {
+            if (Balance < amount)
+                throw new InvalidOperationException("Seu saldo é insuficiente.");
+            
+            Balance -= amount;
+
+            var transaction = new Transaction(
+                Id,
+                TransactionType.TransferOut,
+                amount
+            );
+            _transactions.Add(transaction);
             return transaction;
         }
     }
