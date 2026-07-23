@@ -26,13 +26,6 @@ namespace WalletApi.Controllers
             return StatusCode(StatusCodes.Status201Created, account);
         }
 
-        //Apenas para desenvolvimento
-        [HttpGet]
-        public ActionResult GetAccounts()
-        {
-            var accounts = _context.Accounts;
-            return Ok (accounts);
-        }
 
         [HttpGet("{id:guid}/balance")]
         public async Task<IActionResult> GetBalance(Guid id)
@@ -53,8 +46,9 @@ namespace WalletApi.Controllers
 
         [HttpPost("{id:guid}/transactions")]
         public async Task<IActionResult> CreateTransaction(
-            Guid id,
-            CreateTransactionRequest request)
+        Guid id,
+        CreateTransactionRequest request,
+        [FromHeader(Name= "Idempotency-Key")] string idempotencyKey)
         {
             var account = await _context.Accounts
                 .FirstOrDefaultAsync(a => a.Id == id);
@@ -64,16 +58,29 @@ namespace WalletApi.Controllers
                 return NotFound();
             }
 
+            var existing = await _context.IdempotencyRecords
+                .FirstOrDefaultAsync(x => x.Key == idempotencyKey);
+
+            if (existing != null)
+            {
+                return Ok(new
+                {
+                    transactionId = existing.TransactionId
+                });
+            }
+
+            Transaction createdTransaction;
+
             switch(request.Type)
             {
                 case TransactionType.Credit:
-                    var credit = account.Credit(request.Amount);
-                    _context.Transactions.Add(credit);
+                    createdTransaction = account.Credit(request.Amount);
+                    _context.Transactions.Add(createdTransaction);
                     break;
 
                 case TransactionType.Debit:
-                    var debit = account.Debit(request.Amount);
-                    _context.Transactions.Add(debit);
+                    createdTransaction = account.Debit(request.Amount);
+                    _context.Transactions.Add(createdTransaction);
                     break;
 
                 case TransactionType.TransferIn:
@@ -83,15 +90,25 @@ namespace WalletApi.Controllers
                 default:
                     return BadRequest("Tipo de transação inválido.");
             }
-            var entries = _context.ChangeTracker.Entries();
 
-            foreach (var entry in entries)
+            _context.IdempotencyRecords.Add(
+                new IdempotencyRecord(
+                    idempotencyKey,
+                    createdTransaction.Id
+                )
+            );
+
+            try
             {
-                Console.WriteLine(
-                    $"{entry.Entity.GetType().Name} - {entry.State}"
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException) // Utiliza RowVersion
+            {
+                return Conflict(
+                    "A conta foi alterada por outra operação. Tente novamente."
                 );
             }
-            await _context.SaveChangesAsync();
+
 
             return Ok(new
             {
@@ -99,6 +116,7 @@ namespace WalletApi.Controllers
                 account.Balance
             });
         }
+
         [HttpGet("{id:guid}/transactions")]
         public async Task<IActionResult> GetTransactions(Guid id,
         [FromQuery] TransactionQueryRequest request)
